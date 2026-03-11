@@ -1,188 +1,86 @@
-workspace "Сервис доставки" "Вариант 6" {
+workspace "Fitness Tracker" "Документирование архитектуры фитнес-трекера (Вариант 14)" {
     model {
-        // Люди
-        person "Пользователь" "Отправитель или получатель посылки" {
-            tags "Person"
+        users = person "Пользователь" "Человек, использующий приложение для учёта тренировок"
+
+        fitnessTracker = softwareSystem "FitnessTracker" "Система для ведения тренировок и упражнений" {
+            tags "System"
         }
 
-        // Внешние системы
-        softwareSystem "Платежная система" "Обрабатывает платежи за доставку" {
-            tags "External System"
-        }
-        softwareSystem "Служба уведомлений" "Отправляет email и SMS уведомления" {
-            tags "External System"
-        }
+        users -> fitnessTracker "Использует"
 
-        // Наша система
-        softwareSystem "Сервис доставки" "Позволяет пользователям создавать посылки и оформлять доставку" {
-            tags "Software System"
+        // Контейнеры
+        spa = container "Single Page App" "React" "Веб-интерфейс для пользователей"
+        gateway = container "API Gateway" "Node.js + Express" "Единая точка входа, маршрутизация запросов"
+        userService = container "User Service" "Java Spring Boot" "Управление пользователями"
+        exerciseService = container "Exercise Service" "Java Spring Boot" "Управление упражнениями"
+        workoutService = container "Workout Service" "Java Spring Boot" "Управление тренировками и статистикой"
+        userDb = container "User DB" "PostgreSQL" "Хранение данных пользователей"
+        exerciseDb = container "Exercise DB" "PostgreSQL" "Хранение данных упражнений"
+        workoutDb = container "Workout DB" "PostgreSQL" "Хранение данных тренировок"
 
-            // Контейнеры
-            container "Web Application" "Предоставляет интерфейс пользователя" "React, SPA" {
-                tags "Container"
-            }
+        // Связи
+        users -> spa "Использует" "HTTPS"
+        spa -> gateway "Отправляет API-запросы" "HTTPS/REST"
+        gateway -> userService "Маршрутизирует запросы" "HTTPS/REST"
+        gateway -> exerciseService "Маршрутизирует запросы" "HTTPS/REST"
+        gateway -> workoutService "Маршрутизирует запросы" "HTTPS/REST"
 
-            container "User Service" "Управление пользователями" "Spring Boot, REST API, Java" {
-                tags "Container"
-            }
-            container "Parcel Service" "Управление посылками" "Spring Boot, REST API, Java" {
-                tags "Container"
-            }
-            container "Delivery Service" "Управление доставками" "Spring Boot, REST API, Java" {
-                tags "Container"
-            }
-            container "Payment Service" "Интеграция с платежной системой" "Spring Boot, REST API, Java" {
-                tags "Container"
-            }
-            container "Notification Service" "Отправка уведомлений" "Spring Boot, REST API, Java" {
-                tags "Container"
-            }
+        userService -> userDb "Читает/пишет" "JDBC"
+        exerciseService -> exerciseDb "Читает/пишет" "JDBC"
+        workoutService -> workoutDb "Читает/пишет" "JDBC"
 
-            // Базы данных
-            container "User Database" "Хранит данные пользователей" "PostgreSQL" {
-                tags "Database"
-            }
-            container "Parcel Database" "Хранит данные посылок" "PostgreSQL" {
-                tags "Database"
-            }
-            container "Delivery Database" "Хранит данные доставок" "PostgreSQL" {
-                tags "Database"
-            }
-        }
-
-        // Отношения (контекст)
-        Пользователь -> "Сервис доставки" "Использует для создания посылок и доставок"
-        "Сервис доставки" -> "Платежная система" "Выполняет платежи через"
-        "Сервис доставки" -> "Служба уведомлений" "Отправляет уведомления через"
-
-        // Отношения между контейнерами
-        "Web Application" -> "User Service" "Вызывает API" "HTTPS/REST"
-        "Web Application" -> "Parcel Service" "Вызывает API" "HTTPS/REST"
-        "Web Application" -> "Delivery Service" "Вызывает API" "HTTPS/REST"
-
-        "User Service" -> "User Database" "Читает/записывает данные" "JDBC"
-        "Parcel Service" -> "Parcel Database" "Читает/записывает данные" "JDBC"
-        "Delivery Service" -> "Delivery Database" "Читает/записывает данные" "JDBC"
-
-        "Delivery Service" -> "User Service" "Проверяет существование пользователей" "HTTPS/REST"
-        "Delivery Service" -> "Parcel Service" "Получает данные посылки" "HTTPS/REST"
-        "Delivery Service" -> "Payment Service" "Инициирует оплату" "HTTPS/REST"
-        "Delivery Service" -> "Notification Service" "Запрашивает отправку уведомлений" "HTTPS/REST"
-
-        "Payment Service" -> "Платежная система" "Отправляет запросы на оплату" "HTTPS/REST"
-        "Notification Service" -> "Служба уведомлений" "Отправляет письма/SMS" "SMTP/HTTP"
+        workoutService -> userService "Проверяет существование пользователя" "HTTPS/REST"
+        workoutService -> exerciseService "Проверяет существование упражнений" "HTTPS/REST"
     }
 
     views {
-        // Диаграмма System Context
-        systemContext "Сервис доставки" "Диаграмма контекста системы" {
+        systemcontext fitnessTracker "SystemContext" "Контекстная диаграмма системы FitnessTracker" {
             include *
-            autoLayout
+            autolayout lr
         }
 
-        // Диаграмма Container
-        container "Сервис доставки" "Диаграмма контейнеров" {
+        container fitnessTracker "Containers" "Диаграмма контейнеров системы FitnessTracker" {
             include *
-            autoLayout
+            autolayout lr
         }
 
-        // Динамическая диаграмма для сценария "Создание доставки"
-        dynamic "Создание доставки" "Последовательность взаимодействия при создании доставки" {
-            // Участники: Пользователь, Web Application, Delivery Service, User Service, Parcel Service, Payment Service, Notification Service, их БД, внешние системы.
-            // Используем элементы, которые были описаны.
-            // Важно: в dynamic view нужно ссылаться на элементы по их ID или имени. Используем имена, так как в DSL мы их задали.
-            // Укажем последовательность шагов.
-            
-            // Шаг 1: Пользователь отправляет запрос через Web Application
-            Пользователь -> "Web Application" "Запрашивает создание доставки"
-
-            // Шаг 2: Web Application вызывает Delivery Service
-            "Web Application" -> "Delivery Service" "POST /deliveries"
-
-            // Шаг 3: Delivery Service проверяет отправителя через User Service
-            "Delivery Service" -> "User Service" "GET /users/{senderId}"
-
-            // Шаг 4: User Service обращается к своей БД
-            "User Service" -> "User Database" "SELECT"
-
-            // Шаг 5: User Service возвращает данные отправителя
-            "User Service" -> "Delivery Service" "Данные отправителя"
-
-            // Шаг 6: Delivery Service проверяет получателя
-            "Delivery Service" -> "User Service" "GET /users/{receiverId}"
-            "User Service" -> "User Database" "SELECT"
-            "User Service" -> "Delivery Service" "Данные получателя"
-
-            // Шаг 7: Delivery Service получает данные посылки от Parcel Service
-            "Delivery Service" -> "Parcel Service" "GET /parcels/{parcelId}"
-            "Parcel Service" -> "Parcel Database" "SELECT"
-            "Parcel Service" -> "Delivery Service" "Данные посылки"
-
-            // Шаг 8: Delivery Service создает запись о доставке в своей БД
-            "Delivery Service" -> "Delivery Database" "INSERT into deliveries"
-
-            // Шаг 9: Delivery Service вызывает Payment Service для оплаты
-            "Delivery Service" -> "Payment Service" "POST /payments"
-
-            // Шаг 10: Payment Service взаимодействует с внешней платежной системой
-            "Payment Service" -> "Платежная система" "Проведение платежа"
-
-            // Шаг 11: Платежная система возвращает результат
-            "Платежная система" -> "Payment Service" "Подтверждение оплаты"
-
-            // Шаг 12: Payment Service возвращает результат Delivery Service
-            "Payment Service" -> "Delivery Service" "Результат оплаты"
-
-            // Шаг 13: Delivery Service обновляет статус доставки
-            "Delivery Service" -> "Delivery Database" "UPDATE status"
-
-            // Шаг 14: Delivery Service вызывает Notification Service для уведомлений
-            "Delivery Service" -> "Notification Service" "POST /notifications"
-
-            // Шаг 15: Notification Service отправляет уведомления через внешнюю службу
-            "Notification Service" -> "Служба уведомлений" "Отправка email/SMS"
-
-            // Шаг 16: Notification Service возвращает подтверждение
-            "Служба уведомлений" -> "Notification Service" "Уведомления отправлены"
-            "Notification Service" -> "Delivery Service" "Уведомления отправлены"
-
-            // Шаг 17: Delivery Service возвращает успешный ответ Web Application
-            "Delivery Service" -> "Web Application" "201 Created"
-
-            // Шаг 18: Web Application отображает результат пользователю
-            "Web Application" -> Пользователь "Информация о созданной доставке"
-
+        dynamic fitnessTracker "CreateWorkout" "Динамическая диаграмма создания тренировки" {
+            include spa gateway workoutService userService exerciseService workoutDb
             autoLayout
+
+            # Сценарий создания тренировки
+            spa -> gateway "POST /api/workouts"
+            gateway -> workoutService "POST /workouts"
+            workoutService -> exerciseService "GET /exercises/{id}" for each exercise
+            exerciseService -> exerciseDb "SELECT"
+            exerciseDb -> exerciseService "данные упражнения"
+            exerciseService -> workoutService "ответ"
+            workoutService -> userService "GET /users/{id}"
+            userService -> userDb "SELECT"
+            userDb -> userService "данные пользователя"
+            userService -> workoutService "ответ"
+            workoutService -> workoutDb "INSERT"
+            workoutDb -> workoutService "подтверждение"
+            workoutService -> gateway "201 Created"
+            gateway -> spa "201 Created"
         }
 
-        // Дефолтные стили
         styles {
             element "Person" {
+                shape person
                 background #08427b
                 color #ffffff
-                shape person
             }
             element "Software System" {
                 background #1168bd
                 color #ffffff
             }
-            element "External System" {
-                background #999999
-                color #ffffff
-            }
             element "Container" {
                 background #438dd5
                 color #ffffff
-                shape roundedbox
-            }
-            element "Database" {
-                background #438dd5
-                color #ffffff
-                shape cylinder
             }
         }
 
-        // Описание диаграмм
-        description "Сервис доставки" "Система позволяет пользователям создавать посылки и оформлять доставку."
+        theme default
     }
 }
